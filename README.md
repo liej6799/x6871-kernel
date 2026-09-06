@@ -1,129 +1,105 @@
-# X6871 Kernel — 5.10.255-v1llhaze!-komari
+# x6871-kernel — Infinix GT 20 Pro (X6871)
 
-**Device:** X6871 (MediaTek MT6895 / Dimensity 8100-class)  
-**Kernel:** 5.10.255-v1llhaze!-komari SMP preempt mod_unload modversions (aarch64)  
-**Toolchain:** clang-r416183b + GCC 4.9  
-**Boot image:** GKI v4, A/B slots  
-**Android:** 13/14/15 supported  
+Build environment, packaging scripts, and CI for a custom GKI kernel for the
+Infinix GT 20 Pro (X6871, MediaTek MT6895 / Dimensity 8200 Ultimate).
 
----
+## Device
 
-## Provenance
+| | |
+|---|---|
+| Device | Infinix GT 20 Pro (X6871) |
+| SoC | MediaTek MT6895 (Dimensity 8200 Ultimate) |
+| Kernel base | Linux 5.10 — GKI 2.0, `android12-5.10`, KMI generation 9 |
+| Boot image | header v4, A/B slots, `Image.gz`, 64 MB boot partition |
+| Stock vendor modules | `5.10.237-android12-9-g19bc7acc84fd` (vendor_dlkm — untouched by this kernel) |
+| DTB / DTBO | stock `mt6895.dtb` + `dtbo.img` (rm69220 CSOT 144 Hz panel overlay) — never replaced |
 
-This zip ships a **pre-built, verified kernel** — no rebuild was performed. The 5.10.260
-komari-HEAD rebuild was a wrong-base detour; the proven 5.10.255 image was already
-staged and is KMI-compatible with the device's stock 5.10.237 vendor_dlkm modules.
+## Release artifact (proven, boot-tested)
 
-### Phase 1 — Verification (gate passed)
+The [v1.0.1-komari-5.10.255 release](../../releases/tag/v1.0.1-komari-5.10.255)
+ships the verified kernel — built on the **official osm0sis AnyKernel3**
+installer (v1.0 shipped a broken fabricated bootstrap and is superseded):
+identical copies are committed at `anykernel3/kernel-X6871-v1.0.1-komari-5.10.255.zip`
+and `prebuilt/Image.gz`.
 
-| Check              | Result  |
-|--------------------|---------|
-| `gunzip -t`        | exit 0 (integrity OK) |
-| `file`             | gzip compressed data, max compression, original size 33 802 308 bytes |
-| sha256sum          | `785a5c1a114f6147e8126c9269fed4e665d329c97dbf4561143b21ed280b60b7` ✓ match |
-| vermagic string    | `5.10.255-v1llhaze!-komari SMP preempt mod_unload modversions aarch64` ✓ |
-| Proven defconfig    | `/tmp/kilo/kmi/proven.config` (68 04 lines, KSU-ified, kyber/bfq/zstd/bbr) ✓ |
+- **Kernel:** `5.10.255-v1llhaze!-komari SMP preempt mod_unload modversions aarch64`
+- **Toolchain:** AOSP clang-r416183b (clang 12.0.5 + LLD 12.0.5) — the same prebuilt that produced the image
+- **Image.gz sha256:** `785a5c1a114f6147e8126c9269fed4e665d329c97dbf4561143b21ed280b60b7`
+- **Source lineage:** [vlxlxlv/android-kernel-common-5.10](https://github.com/vlxlxlv/android-kernel-common-5.10) (branch `v1llhaze-komari`), GPL-2.0
+- **Config:** [`configs/x6871_defconfig`](configs/x6871_defconfig)
 
-### Phase 1 — Test module vermagic (KMI demo)
+### Features (from the proven config)
 
-Both test `.ko` files report the **stock 5.10.237** vermagic:
+- KernelSU (manual hooks)
+- I/O schedulers: kyber + BFQ (mq-deadline default)
+- zRAM default compressor: zstd
+- TCP congestion: BBR default
+- CPU frequency governor: schedutil (+ uclamp)
+- Hardening: LTO-thin + CFI-clang + shadow call stack, KASLR, `CONFIG_MODVERSIONS`
 
-```
-5.10.237-android12-9-g19bc7acc84fd-dirty SMP preempt mod_unload modversions aarch64
-```
+## KMI compatibility with stock vendor modules
 
-The kernel vermagic is:
+The device's stock vendor modules are built against `5.10.237-android12-9`, while
+this kernel reports `5.10.255-v1llhaze!-komari`. They load anyway because:
 
-```
-5.10.255-v1llhaze!-komari SMP preempt mod_unload modversions aarch64
-```
+1. `same_magic()` (kernel/module.c) skips the version prefix when the module
+   carries symbol CRCs (`CONFIG_MODVERSIONS=y`) — only the common
+   ` SMP preempt mod_unload modversions aarch64` suffix is compared.
+2. `check_version()` is warn-only on symbol-CRC disagreement (emits a
+   `pr_warn` and returns success), so CRC drift never blocks a module load.
 
-Despite the version mismatch (5.10.255 vs 5.10.237), the modules load successfully
-because of the KMI compatibility patch in `module.c`.
-
-### KMI compatibility evidence (`module.c`)
-
-**`same_magic` (lines 1373-1381)** — skips the version prefix when the module has CRCs:
-
-```c
-/* First part is kernel version, which we ignore if module has crcs. */
-static inline int same_magic(const char *amagic, const char *bmagic,
-                             bool has_crcs)
-{
-    if (has_crcs) {
-        amagic += strcspn(amagic, " ");
-        bmagic += strcspn(bmagic, " ");
-    }
-    return strcmp(amagic, bmagic) == 0;
-}
-```
-
-When `has_crcs == true`, `strcspn` advances past the first token
-(e.g. `5.10.255-v1llhaze!-komari` for the kernel, `5.10.237-android12-9-...`
-for the stock module) and compares only the suffix ` SMP preempt mod_unload
-modversions aarch64`, which is identical. This bridges the version gap.
-
-**`check_version` (lines 1348-1352)** — warn-only; returns success (1) even on
-CRC disagreement:
-
-```c
-bad_version:
-    pr_warn("%s: disagrees about version of symbol %s, but ignore...\n",
-           info->name, symname);
-    return 1;
-```
-
-### Phase 2 — Reference AK3 template
-
-Reference: `larry-kernel/anykernel3/` (larry, SM6375, same project style).
-
-The `anykernel.sh` bootstrap (architecture check, device check, block device
-detection, flash_image install) was preserved verbatim and adapted only for
-X6871 properties and the kernel-only install block.
-
-The standard AnyKernel3 `update-binary` and `updater-script` bootstrap files
-were created from the canonical osm0sis template (the larry reference tree
-tracked only a `.gitkeep` placeholder in META-INF).
-
-### Phase 3 — Package layout
-
-```
-kernel-X6871-v1llhaze-komari-5.10.255.zip
-├── META-INF/
-│   └── com/google/android/
-│       ├── update-binary    (AnyKernel3 bootstrap v3.0)
-│       └── updater-script   (TWRP recovery entry)
-├── anykernel.sh             (X6871 device-specific installer)
-└── Image.gz                 (proven 5.10.255 kernel, sha256 verified)
-```
-
-### Phase 4 — Validation
-
-| Check             | Result  |
-|-------------------|---------|
-| `unzip -t`        | all entries OK |
-| `unzip -l`        | contents verified |
-| Image.gz sha256   | matches proven hash |
-
----
+Full verification evidence: [PROVENANCE.md](PROVENANCE.md).
 
 ## Install
 
 1. Boot into TWRP / OrangeFox custom recovery.
-2. Flash `kernel-X6871-v1llhaze-komari-5.10.255.zip`.
-3. Reboot (the anykernel.sh writes to both `boot_a` and `boot_b` for A/B safety).
+2. Flash `kernel-X6871-v1.0.1-komari-5.10.255.zip`.
+3. Reboot.
 
-**Note:** This is a **kernel-only** installer. Stock `vendor_dlkm` modules are
-preserved; no DKLM/30 modules are overwritten.
+**Kernel-only flash:** the installer writes `Image.gz` to the boot partitions
+only (A/B slot-aware). DTB, DTBO, vendor_boot and vendor_dlkm are untouched —
+revert any time by reflashing the stock boot image.
 
----
+## Build from source
 
-## Files in this directory
+```bash
+./scripts/build-kernel.sh   # clones pinned komari source, builds Image.gz
+./scripts/build-zips.sh      # packages the AnyKernel3 flashable zip
+```
 
-| File              | Description                                   |
-|-------------------|-----------------------------------------------|
-| `kernel-X6871-v1llhaze-komari-5.10.255.zip` | The flashable deliverable |
-| `Image.gz`        | Loose copy of the proven kernel (sha256 verified) |
-| `defconfig`       | Proven defconfig (`proven.config` from `/tmp/kilo/kmi/`) |
-| `build.log`       | Build provenance and verification log        |
-| `README.md`       | This file                                     |
+Requirements: Linux host, `git`, `zip`, `libssl-dev`, `libelf-dev`, `gcc-aarch64-linux-gnu`.
+The toolchain (clang-r416183b) is fetched automatically by `scripts/setup-toolchain.sh`.
+
+> **Version note:** the pinned komari commit builds **5.10.260** — newer than
+> the proven 5.10.255 release. CI output is therefore **experimental**
+> (it still loads stock modules thanks to the warn-only CRC policy, but the
+> boot-tested artifact is the 5.10.255 release). [PROVENANCE.md](PROVENANCE.md)
+> documents why the 5.10.260 rebuild was discarded as the release base.
+
+## CI
+
+GitHub Actions (`.github/workflows/build.yml`) builds `Image.gz` from the
+pinned source on every push to `main` and uploads the AnyKernel3 zip as an
+artifact.
+
+## Release convention
+
+Every release ships with a changelog and a "what's fixed" section — see
+[RELEASE-NOTES.md](RELEASE-NOTES.md). Releases are mirrored to the Telegram
+release group (Helios-Kernel Tester | X6871).
+
+## Repository layout
+
+```
+├── configs/x6871_defconfig       proven kernel config
+├── scripts/                      toolchain setup / build / packaging
+├── anykernel3/                   official AnyKernel3 installer tree + built zip
+├── prebuilt/Image.gz             loose copy of the proven kernel
+├── docs/                         build + provenance logs
+└── .github/workflows/build.yml   CI
+```
+
+## Credits
+
+- Kernel source: [vlxlxlv](https://github.com/vlxlxlv/android-kernel-common-5.10) (v1llhaze-komari)
+- AnyKernel3: [osm0sis](https://github.com/osm0sis/AnyKernel3)

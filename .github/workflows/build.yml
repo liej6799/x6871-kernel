@@ -1,0 +1,34 @@
+name: Build x6871-kernel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex libssl-dev libelf-dev dwarves make gcc g++ git zip \
+            libtinfo-dev libcrypt-dev python3 gcc-aarch64-linux-gnu
+
+      - name: Build kernel Image.gz (EXPERIMENTAL 5.10.260 komari HEAD)
+        run: bash scripts/build-kernel.sh
+
+      - name: Package AnyKernel3 zip
+        run: bash scripts/build-zips.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: x6871-kernel-experimental
+          path: |
+            anykernel3/x6871-kernel-*.zip
+            build.log

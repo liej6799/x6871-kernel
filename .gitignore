@@ -1,2 +1,6 @@
 .github_token
+kernel/
+toolchain/
+out/
+staging/
 *.log.tmp
