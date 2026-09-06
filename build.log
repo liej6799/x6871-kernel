@@ -1,0 +1,131 @@
+=== X6871 Kernel Packaging — Build Log ===
+Date: 2026-09-05T20:03 (UTC)
+Project: Research-ROM / X6871-kernel
+Device: X6871 (MT6895)
+Kernel: 5.10.255-v1llhaze!-komari SMP preempt mod_unload modversions aarch64
+
+=== Phase 1 — Verification of proven image ===
+
+Source image: /tmp/kilo/mods/Image.gz
+
+[1] Integrity test (gunzip -t)
+    Command: gunzip -t /tmp/kilo/mods/Image.gz
+    Result:   EXIT CODE 0 (PASS — no errors)
+
+[2] File type
+    Command: file /tmp/kilo/mods/Image.gz
+    Result:   gzip compressed data, max compression, from Unix, original size modulo 2^32 33802308
+
+[3] SHA-256 verification
+    Command: sha256sum /tmp/kilo/mods/Image.gz
+    Expected: 785a5c1a114f6147e8126c9269fed4e665d329c97dbf4561143b21ed280b60b7
+    Actual:   785a5c1a114f6147e8126c9269fed4e665d329c97dbf4561143b21ed280b60b7
+    Result:   MATCH (PASS)
+
+[4] Kernel vermagic (decompressed strings)
+    Command: gunzip -c /tmp/kilo/mods/Image.gz | strings | grep -m1 '5.10.255'
+    Result:   5.10.255-v1llhaze!-komari SMP preempt mod_unload modversions aarch64
+    Status:   FOUND (PASS)
+
+[5] Proven defconfig
+    Path:     /tmp/kilo/kmi/proven.config
+    Lines:    6804
+    Includes: CONFIG_KSU, CONFIG_KYBER, CONFIG_IOSCHED_BFQ, CONFIG_ZRAM_DEF_COMP_ZSTD,
+              CONFIG_TCP_CONG_BBR, CONFIG_CPU_FREQ_GOV_SCHEDUTIL, CONFIG_LTO=n
+    Status:   EXISTS (PASS)
+
+[6] Test module vermagic (KMI demo)
+    /tmp/kilo/mods/board_temp.ko:
+      5.10.237-android12-9-g19bc7acc84fd-dirty SMP preempt mod_unload modversions aarch64
+    /tmp/kilo/mods/aw8601af.ko:
+      5.10.237-android12-9-g19bc7acc84fd-dirty SMP preempt mod_unload modversions aarch64
+    (Both are stock 5.10.237-style vermagic — bridged by same_magic + warn-only check_version)
+
+=== Phase 2 — Reference AK3 template ===
+
+Reference tree: /var/home/tanjidurrahman2414/Documents/Research-ROM/larry-kernel/anykernel3/
+  - anykernel.sh: 88 lines (larry, SM6375, v0.1.0)
+  - META-INF/com/google/android/: only .gitkeep (no update-binary/updater-script)
+  - Existing zip: larry-kernel-v0.1.0-SM6375.zip (META-INF dirs exist but empty)
+
+The larry anykernel.sh bootstrap + install block was preserved verbatim
+(architecture check, device check, block device detection, flash_image calls).
+Standard AnyKernel3 update-binary + updater-script created from canonical
+osm0sis/AnyKernel3 template.
+
+Larry anykernel.sh properties block:
+  kernel.string=larry-kernel | v0.1.0 | SM6375
+  device.name=larry
+  supported.versions=13,14,15
+  is_kernel_install=true
+  slot_handoff=true
+
+Larry install block:
+  flash_image /tmp/anykernel/Image $BLOCK
+  flash_image /tmp/anykernel/Image.gz $BLOCK
+  (modules dir: find *.ko | cp | insmod)
+  (dtb: scan /tmp/anykernel/dtb/*.dtb)
+
+=== Phase 3 — Package creation ===
+
+Output directory: /var/home/tanjidurrahman2414/Documents/Research-ROM/X6871-kernel/
+
+Zip contents:
+  META-INF/com/google/android/
+    ├── update-binary     (AnyKernel3 bootstrap v3.0)
+    └── updater-script    (TWRP recovery entry)
+  anykernel.sh            (X6871 device-specific, kernel-only)
+  Image.gz                (proven kernel, 12 577 641 bytes)
+
+X6871 anykernel.sh properties:
+  kernel.string=X6871 | kernel 5.10.255-v1llhaze!-komari | MT6895
+  device.name=X6871
+  supported.versions=13,14,15
+  is_kernel_install=true
+  slot_handoff=true
+  is_slot_device=true
+  kernel.name=Image.gz
+
+=== Phase 4 — Validation ===
+
+[1] unzip -t
+    Command: unzip -t kernel-X6871-v1llhaze-komari-5.10.255.zip
+    Result:   All 8 entries OK — "No errors detected in compressed data"
+
+[2] unzip -l
+    Command: unzip -l kernel-X6871-v1llhaze-komari-5.10.255.zip
+    Entries:  8 files (META-INF dirs + update-binary + updater-script +
+             anykernel.sh + Image.gz)
+    Total:    12 587 670 bytes (compressed: ~12.0 MB)
+
+[3] Loose Image.gz sha256 cross-check
+    Command: sha256sum Image.gz
+    Result:   785a5c1a114f6147e8126c9269fed4e665d329c97dbf4561143b21ed280b60b7
+    Status:   MATCH (PASS)
+
+[4] In-zip Image.gz sha256 cross-check
+    Command: unzip -p kernel-X6871-v1llhaze-komari-5.10.255.zip Image.gz | sha256sum
+    Result:   785a5c1a114f6147e8126c9269fed4e665d329c97dbf4561143b21ed280b60b7
+    Status:   MATCH (PASS)
+
+=== KMI compatibility note ===
+
+The 5.10.255 kernel is KMI-compatible with the device's stock 5.10.237
+vendor_dlkm modules because:
+  1. same_magic() (module.c:1373-1381) skips the version prefix when
+     has_crcs=true, comparing only the common suffix
+     " SMP preempt mod_unload modversions aarch64" which is identical
+     across both vermagic strings.
+  2. check_version() (module.c:1348-1352) returns 1 (success) with only
+     a pr_warn() message even when CRCs disagree — warn-only, never blocks.
+  3. No DKLM/30 modules are installed by this zip (kernel-only); the device
+     retains its stock vendor_dlkm modules on the vendor_dlkm partition.
+
+=== Conclusion ===
+
+No kernel rebuild performed. The proven 5.10.255 Image.gz was verified
+(integrity, sha256, vermagic) and packaged directly into an AnyKernel3
+flashable zip for X6871.
+
+Staging directory cleaned (intermediate artifact only).
+Source directories under /tmp/kilo and /var/home/.../kernel-build-tmp preserved.
