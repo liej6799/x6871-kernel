@@ -9,7 +9,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 KERNEL_SRC="${PROJECT_ROOT}/kernel"
-KOMARI_COMMIT="15020c5332c18af361b42c415f07cd3046723027"
+KOMARI_COMMIT="6cd23c6a07cbb44fd6900c079bb7b50c0f1eb206"
 
 source "${SCRIPT_DIR}/setup-toolchain.sh"
 
