@@ -19,6 +19,10 @@ if [ ! -d "${KERNEL_SRC}/.git" ]; then
 fi
 git -C "${KERNEL_SRC}" checkout "${KOMARI_COMMIT}"
 
+echo "[*] Applying Droidspaces GKI kABI patches (SYSVIPC + POSIX_MQUEUE)..."
+patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/droidspaces/001-sysvipc-kabi.patch"
+patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/droidspaces/002-posix-mqueue-kabi.patch"
+
 export ARCH=arm64
 OUT_DIR="${KERNEL_SRC}/out"
 mkdir -p "${OUT_DIR}"
