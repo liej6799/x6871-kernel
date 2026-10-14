@@ -13,7 +13,7 @@ if [ ! -f "${OUT_DIR}/arch/arm64/boot/Image.gz" ]; then
 fi
 
 KVER="$(make -s -C "${KERNEL_SRC}" O="${OUT_DIR}" ARCH=arm64 kernelversion)"
-ZIP_NAME="x6871-kernel-${KVER}-komari.zip"
+ZIP_NAME="x6871-kernel-${KVER}-komari-v4l2loopback.zip"
 STAGING="${AK3_DIR}/staging"
 
 echo "[*] Staging AnyKernel3 (kernel-only: Image.gz, no modules, no DTB)..."

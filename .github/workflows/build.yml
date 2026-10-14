@@ -19,7 +19,7 @@ jobs:
             bc bison flex libssl-dev libelf-dev dwarves make gcc g++ git zip \
             libtinfo-dev libcrypt-dev python3 gcc-aarch64-linux-gnu
 
-      - name: Build kernel Image.gz (EXPERIMENTAL 5.10.260 komari HEAD)
+      - name: Build kernel Image.gz (EXPERIMENTAL 5.10.269 + v4l2loopback)
         run: bash scripts/build-kernel.sh
 
       - name: Package AnyKernel3 zip
@@ -28,7 +28,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: x6871-kernel-experimental
+          name: x6871-kernel-v4l2loopback-experimental
           path: |
             anykernel3/x6871-kernel-*.zip
             build.log

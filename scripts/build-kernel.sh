@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build the X6871 (MT6895) GKI kernel Image.gz from the v1llhaze-komari source.
 #
-# NOTE ON VERSIONS: the pinned komari commit is 5.10.260. The *proven,
+# NOTE ON VERSIONS: the pinned komari commit is 5.10.269. The *proven,
 # boot-tested* release artifact is 5.10.255 (see PROVENANCE.md and the
 # v1.0-komari-5.10.255 GitHub release). Builds from this script are
 # therefore EXPERIMENTAL until boot-tested.
@@ -10,6 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 KERNEL_SRC="${PROJECT_ROOT}/kernel"
 KOMARI_COMMIT="6cd23c6a07cbb44fd6900c079bb7b50c0f1eb206"
+V4L2LOOPBACK_SRC="${PROJECT_ROOT}/v4l2loopback"
+V4L2LOOPBACK_COMMIT="2d44c2f3a33844dfd9928dc536288283289bbc34"
 
 source "${SCRIPT_DIR}/setup-toolchain.sh"
 
@@ -18,6 +20,19 @@ if [ ! -d "${KERNEL_SRC}/.git" ]; then
   git clone https://github.com/vlxlxlv/android-kernel-common-5.10 "${KERNEL_SRC}"
 fi
 git -C "${KERNEL_SRC}" checkout "${KOMARI_COMMIT}"
+
+if [ ! -d "${V4L2LOOPBACK_SRC}/.git" ]; then
+  echo "[*] Cloning v4l2loopback v0.13.2..."
+  git clone https://github.com/v4l2loopback/v4l2loopback.git "${V4L2LOOPBACK_SRC}"
+fi
+git -C "${V4L2LOOPBACK_SRC}" checkout "${V4L2LOOPBACK_COMMIT}"
+
+echo "[*] Integrating built-in v4l2loopback at /dev/video200..."
+cp "${V4L2LOOPBACK_SRC}/v4l2loopback.c" \
+   "${V4L2LOOPBACK_SRC}/v4l2loopback.h" \
+   "${V4L2LOOPBACK_SRC}/v4l2loopback_formats.h" \
+   "${KERNEL_SRC}/drivers/media/v4l2-core/"
+patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/v4l2loopback/001-built-in-video200.patch"
 
 echo "[*] Applying Droidspaces GKI kABI patches (SYSVIPC + POSIX_MQUEUE)..."
 patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/droidspaces/001-sysvipc-kabi.patch"
@@ -33,6 +48,8 @@ if [ ! -f "${OUT_DIR}/.config" ]; then
   # GKI whitelist file is not present in this tree; harmless for Image-only builds.
   "${KERNEL_SRC}/scripts/config" --file "${OUT_DIR}/.config" --disable TRIM_UNUSED_KSYMS
 fi
+
+"${KERNEL_SRC}/scripts/config" --file "${OUT_DIR}/.config" --enable V4L2_LOOPBACK
 
 echo "[*] olddefconfig..."
 make -C "${KERNEL_SRC}" O="${OUT_DIR}" ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig

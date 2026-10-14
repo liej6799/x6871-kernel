@@ -1,6 +1,7 @@
 .github_token
 kernel/
 toolchain/
+/v4l2loopback/
 out/
 staging/
 *.log.tmp

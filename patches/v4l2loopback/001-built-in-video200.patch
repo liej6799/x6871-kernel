@@ -1,0 +1,67 @@
+diff --git a/drivers/media/v4l2-core/Kconfig b/drivers/media/v4l2-core/Kconfig
+index b1c025d1b..9c93196d7 100644
+--- a/drivers/media/v4l2-core/Kconfig
++++ b/drivers/media/v4l2-core/Kconfig
+@@ -16,6 +16,16 @@ config VIDEO_V4L2_I2C
+ 	depends on I2C && VIDEO_V4L2
+ 	default y
+ 
++config V4L2_LOOPBACK
++	bool "V4L2 loopback virtual camera"
++	depends on VIDEO_V4L2
++	help
++	  Create a virtual V4L2 video device which accepts frames from a
++	  userspace producer and exposes them to capture applications. This
++	  build reserves /dev/video200 for an Android camera bridge.
++
++	  If unsure, say N.
++
+ config VIDEO_V4L2_SUBDEV_API
+ 	bool "V4L2 sub-device userspace API"
+ 	depends on VIDEO_DEV && MEDIA_CONTROLLER
+diff --git a/drivers/media/v4l2-core/Makefile b/drivers/media/v4l2-core/Makefile
+index 5b59f7e81..2f69eb959 100644
+--- a/drivers/media/v4l2-core/Makefile
++++ b/drivers/media/v4l2-core/Makefile
+@@ -17,6 +17,7 @@ videodev-$(CONFIG_VIDEO_V4L2_I2C) += v4l2-i2c.o
+ obj-$(CONFIG_V4L2_FWNODE) += v4l2-fwnode.o
+ obj-$(CONFIG_VIDEO_V4L2) += videodev.o
+ obj-$(CONFIG_VIDEO_V4L2) += v4l2-dv-timings.o
++obj-$(CONFIG_V4L2_LOOPBACK) += v4l2loopback.o
+ 
+ obj-$(CONFIG_VIDEO_TUNER) += tuner.o
+ 
+diff --git a/drivers/media/v4l2-core/v4l2loopback.c b/drivers/media/v4l2-core/v4l2loopback.c
+index 25cb1beb2..67cd9326f 100644
+--- a/drivers/media/v4l2-core/v4l2loopback.c
++++ b/drivers/media/v4l2-core/v4l2loopback.c
+@@ -141,7 +141,7 @@ typedef unsigned __poll_t;
+ 
+ /* whether the default is to announce capabilities exclusively or not */
+ #ifndef V4L2LOOPBACK_DEFAULT_EXCLUSIVECAPS
+-#define V4L2LOOPBACK_DEFAULT_EXCLUSIVECAPS 0
++#define V4L2LOOPBACK_DEFAULT_EXCLUSIVECAPS 1
+ #endif
+ 
+ /* when a producer is considered to have gone stale */
+@@ -183,15 +183,17 @@ MODULE_PARM_DESC(
+ 	"how many users can open the loopback device [DEFAULT: " __stringify(
+ 		V4L2LOOPBACK_DEFAULT_MAX_OPENERS) "]");
+ 
+-static int devices = -1;
++static int devices = 1;
+ module_param(devices, int, 0);
+ MODULE_PARM_DESC(devices, "how many devices should be created");
+ 
+-static int video_nr[MAX_DEVICES] = { [0 ...(MAX_DEVICES - 1)] = -1 };
++static int video_nr[MAX_DEVICES] = {
++	200, [1 ...(MAX_DEVICES - 1)] = -1
++};
+ module_param_array(video_nr, int, NULL, 0444);
+ MODULE_PARM_DESC(video_nr,
+ 		 "video device numbers (-1=auto, 0=/dev/video0, etc.)");
+ 
+-static char *card_label[MAX_DEVICES];
++static char *card_label[MAX_DEVICES] = { "Android Camera" };
+ module_param_array(card_label, charp, NULL, 0000);
+ MODULE_PARM_DESC(card_label, "card labels for each device");

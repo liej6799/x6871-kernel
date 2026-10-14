@@ -37,6 +37,22 @@ and `prebuilt/Image.gz`.
 - CPU frequency governor: schedutil (+ uclamp)
 - Hardening: LTO-thin + CFI-clang + shadow call stack, KASLR, `CONFIG_MODVERSIONS`
 
+### Experimental v4l2loopback build
+
+Current CI builds include v4l2loopback 0.13.2 directly in `Image.gz`. It creates
+one exclusive-capability virtual camera named `Android Camera` at
+`/dev/video200`. The fixed number avoids the MediaTek camera pipeline devices at
+`/dev/video0` through `/dev/video174`.
+
+Feed the virtual camera from a Linux userspace running scrcpy 3.0 or newer:
+
+```bash
+scrcpy --serial infinix:5555 \
+  --video-source=camera --camera-id=0 \
+  --camera-size=1280x720 --camera-fps=30 \
+  --v4l2-sink=/dev/video200 --no-playback --no-audio
+```
+
 ## KMI compatibility with stock vendor modules
 
 The device's stock vendor modules are built against `5.10.237-android12-9`, while
@@ -70,7 +86,7 @@ revert any time by reflashing the stock boot image.
 Requirements: Linux host, `git`, `zip`, `libssl-dev`, `libelf-dev`, `gcc-aarch64-linux-gnu`.
 The toolchain (clang-r416183b) is fetched automatically by `scripts/setup-toolchain.sh`.
 
-> **Version note:** the pinned komari commit builds **5.10.260** — newer than
+> **Version note:** the pinned komari commit builds **5.10.269** — newer than
 > the proven 5.10.255 release. CI output is therefore **experimental**
 > (it still loads stock modules thanks to the warn-only CRC policy, but the
 > boot-tested artifact is the 5.10.255 release). [PROVENANCE.md](PROVENANCE.md)
