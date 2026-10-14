@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # global properties
 properties() { '
-kernel.string=Helios Kernel v1.0.1 | X6871 | 5.10.255-v1llhaze!-komari
+kernel.string=X6871 | 5.10.269-v1llhaze!-komari | v4l2loopback
 do.devicecheck=1
 do.variablesd=0
 device.arch=arm64
@@ -43,7 +43,7 @@ PATCH_VBMETA_FLAG=auto;
 
 split_boot;
 
-write_boot;
+flash_boot;
 ## end boot install
 
 
@@ -105,4 +105,3 @@ write_boot;
 
 #write_boot; # use flash_boot to skip ramdisk repack, e.g. for dtb on devices with hdr v4 but no vendor_kernel_boot
 ## end vendor_boot install
-

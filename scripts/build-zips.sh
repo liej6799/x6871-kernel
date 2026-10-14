@@ -22,6 +22,7 @@ mkdir -p "${STAGING}"
 cp "${OUT_DIR}/arch/arm64/boot/Image.gz" "${STAGING}/"
 cp "${AK3_DIR}/anykernel.sh" "${STAGING}/"
 cp -r "${AK3_DIR}/META-INF" "${STAGING}/"
+cp -r "${AK3_DIR}/tools" "${STAGING}/"
 
 echo "[*] Creating ${ZIP_NAME}..."
 ( cd "${STAGING}" && zip -r9y "${AK3_DIR}/${ZIP_NAME}" . -x "*.git*" )
