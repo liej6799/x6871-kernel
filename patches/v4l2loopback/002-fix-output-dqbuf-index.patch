@@ -1,0 +1,12 @@
+diff --git a/drivers/media/v4l2-core/v4l2loopback.c b/drivers/media/v4l2-core/v4l2loopback.c
+index 67cd9326f..a0bb1a9e8 100644
+--- a/drivers/media/v4l2-core/v4l2loopback.c
++++ b/drivers/media/v4l2-core/v4l2loopback.c
+@@ -1894,6 +1894,6 @@ static int vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
+ 		dprintkrw(
+ 			"dqbuf(OUTPUT)#%d: buffer#%d @ %p type=%d bytesused=%d length=%d flags=%x field=%d timestamp=%lld.%06ld sequence=%d\n",
+-			index, buf->index, buf, buf->type, buf->bytesused,
++			buf->index, buf->index, buf, buf->type, buf->bytesused,
+ 			buf->length, buf->flags, buf->field,
+ 			(long long)buf->timestamp.tv_sec,
+ 			(long int)buf->timestamp.tv_usec, buf->sequence);

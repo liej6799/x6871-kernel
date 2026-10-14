@@ -33,6 +33,7 @@ cp "${V4L2LOOPBACK_SRC}/v4l2loopback.c" \
    "${V4L2LOOPBACK_SRC}/v4l2loopback_formats.h" \
    "${KERNEL_SRC}/drivers/media/v4l2-core/"
 patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/v4l2loopback/001-built-in-video200.patch"
+patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/v4l2loopback/002-fix-output-dqbuf-index.patch"
 
 echo "[*] Applying Droidspaces GKI kABI patches (SYSVIPC + POSIX_MQUEUE)..."
 patch -d "${KERNEL_SRC}" -p1 --forward < "${PROJECT_ROOT}/patches/droidspaces/001-sysvipc-kabi.patch"
